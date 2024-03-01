@@ -82,4 +82,7 @@ public class SupprimerDonsController {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
+    public void setDonsService(DonsService donsService) {
+    }
 }

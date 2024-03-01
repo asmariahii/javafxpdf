@@ -4,11 +4,13 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
-import entities.User;
-import service.DonsService;
-import service.UserService;
+import javafx.scene.control.ListCell;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.util.StringConverter;
+import entities.utilisateur;
+import service.DonsService;
+import service.utilisateurService;
 
 import java.util.List;
 
@@ -16,28 +18,60 @@ import java.util.List;
 public class AjouterDonsController {
 
     @FXML
-    private ComboBox<User> userComboBox;
+    private ComboBox<utilisateur> userComboBox;
 
     @FXML
     private TextField donPointsField;
 
     private DonsService donsService;
-    private UserService userService;
+    private utilisateurService userService;
 
     public AjouterDonsController() {
         donsService = new DonsService();
-        userService = new UserService();
+        userService = new utilisateurService();
     }
 
     @FXML
     void initialize() {
-        List<User> userList = userService.getAllUsers();
-        ObservableList<User> observableUserList = FXCollections.observableArrayList(userList);
+        // Charger la liste des utilisateurs et les afficher dans le ComboBox
+        List<utilisateur> userList = userService.getAllUsers();
+        ObservableList<utilisateur> observableUserList = FXCollections.observableArrayList(userList);
         userComboBox.setItems(observableUserList);
+
+        // Définir la manière dont les informations de l'utilisateur sont affichées dans le ComboBox
+        userComboBox.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(utilisateur user, boolean empty) {
+                super.updateItem(user, empty);
+                if (empty || user == null) {
+                    setText(null);
+                } else {
+                    setText(user.getNomUser() + " " + user.getPrenomUser() + " - " + user.getEmailUser() + " - Points: " + user.getNbPoints());
+                }
+            }
+        });
+
+        // Définir la manière dont l'utilisateur est affiché lorsqu'il est sélectionné dans le ComboBox
+        userComboBox.setConverter(new StringConverter<utilisateur>() {
+            @Override
+            public String toString(utilisateur user) {
+                if (user == null) {
+                    return "";
+                } else {
+                    return user.getNomUser() + " " + user.getPrenomUser() + " - " + user.getEmailUser() + " - Points: " + user.getNbPoints();
+                }
+            }
+
+            @Override
+            public utilisateur fromString(String string) {
+                return null; // Nous n'avons pas besoin de cela pour l'instant
+            }
+        });
     }
+
     @FXML
     private void handleAjouterDon() {
-        User selectedUser = userComboBox.getValue();
+        utilisateur selectedUser = userComboBox.getValue();
         if (selectedUser == null) {
             showAlert(Alert.AlertType.ERROR, "Erreur", "Veuillez sélectionner un utilisateur.");
             return;
@@ -51,9 +85,9 @@ public class AjouterDonsController {
             return;
         }
 
-        donsService.addDons(selectedUser, donPoints);
+        donsService.addDonsWithStatus(selectedUser, donPoints);
 
-        showAlert(Alert.AlertType.INFORMATION, "Succès", "Don ajouté avec succès pour l'utilisateur " + selectedUser.getId());
+        showAlert(Alert.AlertType.INFORMATION, "Succès", "Don ajouté avec succès pour l'utilisateur " + selectedUser.getIdUser());
 
         donPointsField.clear();
     }
@@ -66,3 +100,4 @@ public class AjouterDonsController {
         alert.showAndWait();
     }
 }
+

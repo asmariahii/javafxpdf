@@ -2,102 +2,229 @@ package controllers;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import entities.Dons;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.AnchorPane;
+import javafx.stage.Stage;
 import service.DonsService;
+import controllers.AjouterEtatStatutController;
+import java.util.stream.Collectors;
 
+
+
+
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.List;
-import javafx.stage.FileChooser;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-
-import java.io.FileOutputStream;
-
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.util.Callback;
 
 public class AfficherDonsController {
+    private Dons don;
+
+    private Stage primaryStage;
+    private DonsService donsService;
+
+    public void setPrimaryStage(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+    }
+
+    public void setDonsService(DonsService donsService) {
+        this.donsService = donsService;
+    }
+
+    public void setDon(Dons don) {
+        this.don = don;
+    }
 
     @FXML
     private TableView<Dons> donsTable;
 
     @FXML
-    private TableColumn<Dons, String> idColumn;
+    private AnchorPane rootPane;
 
     @FXML
-    private TableColumn<Dons, String> userIdColumn;
+    private TextField searchField;
 
     @FXML
-    private TableColumn<Dons, String> nbPointsColumn;
+    private TableColumn<Dons, String> nomUserColumn;
+
+    @FXML
+    private TableColumn<Dons, String> prenomUserColumn;
+
+    @FXML
+    private TableColumn<Dons, String> emailUserColumn;
+
+    @FXML
+    private TableColumn<Dons, String> numTelColumn;
+
+    @FXML
+    private TableColumn<Dons, Integer> nbPointsColumn;
 
     @FXML
     private TableColumn<Dons, String> dateAjoutColumn;
 
-    private DonsService donsService;
+    @FXML
+    private TableColumn<Dons, String> etatStatutDonsColumn;
 
     public AfficherDonsController() {
         donsService = new DonsService();
     }
 
+
+
+    @FXML
+    private void handleAjouterDon() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/AjouterDons.fxml"));
+            Parent root = loader.load();
+            AjouterDonsController ajouterDonsController = loader.getController();
+            ajouterDonsController.initialize();
+            Stage stage = new Stage();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Ajouter Don");
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Erreur", "Impossible d'ouvrir la vue pour ajouter un don.");
+        }
+    }
+
+
+
     @FXML
     void initialize() {
-        idColumn.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getIdDons())));
-        userIdColumn.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getIdUser())));
-        nbPointsColumn.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getNbPoints())));
+        nomUserColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNomUser()));
+        prenomUserColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getPrenomUser()));
+        emailUserColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getEmailUser()));
+        numTelColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getNumTel()));
+        nbPointsColumn.setCellValueFactory(new PropertyValueFactory<>("nbPoints"));
         dateAjoutColumn.setCellValueFactory(data -> {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             return new SimpleStringProperty(dateFormat.format(data.getValue().getDate_ajout()));
         });
+        etatStatutDonsColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getEtatStatutDons()));
+        // Ajout de la colonne "Ajouter Etat Statut"
+        TableColumn<Dons, Void> colAjouterEtatStatut = new TableColumn<>("Ajouter Etat Statut");
+        Callback<TableColumn<Dons, Void>, TableCell<Dons, Void>> cellFactory = new Callback<>() {
+            @Override
+            public TableCell<Dons, Void> call(final TableColumn<Dons, Void> param) {
+                final TableCell<Dons, Void> cell = new TableCell<>() {
+                    private final Button btn = new Button();
 
-        loadDons();
-    }
-    @FXML
-    private void importerDons() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Exporter les dons");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier Excel", "*.xlsx"));
-        File file = fileChooser.showSaveDialog(donsTable.getScene().getWindow());
+                    {
 
-        if (file != null) {
-            try (FileOutputStream fos = new FileOutputStream(file)) {
-                Workbook workbook = new XSSFWorkbook();
-                Sheet sheet = workbook.createSheet("Dons");
+                        Image image = new Image(getClass().getResourceAsStream("/img/ajouter.png"));
+                        ImageView imageView = new ImageView(image);
+                        imageView.setFitWidth(16); // Ajustez la taille de l'icône si nécessaire
+                        imageView.setFitHeight(16);
+                        btn.setGraphic(imageView);
 
-                // Ajoutez les en-têtes de colonnes
-                Row headerRow = sheet.createRow(0);
-                headerRow.createCell(0).setCellValue("ID Don");
-                headerRow.createCell(1).setCellValue("ID Utilisateur");
-                headerRow.createCell(2).setCellValue("Nombre de points");
-                headerRow.createCell(3).setCellValue("Date d'Ajout");
+                        btn.setOnAction((event) -> {
+                            Dons don = getTableView().getItems().get(getIndex());
+                            handleAjouterEtatStatut(don); // Appeler la méthode handleAjouterEtatStatut avec le don sélectionné
+                        });
+                    }
 
-                // Ajoutez les données des dons à partir de la table
-                List<Dons> donsList = donsTable.getItems();
-                int rowNum = 1;
-                for (Dons don : donsList) {
-                    Row row = sheet.createRow(rowNum++);
-                    row.createCell(0).setCellValue(don.getIdDons());
-                    row.createCell(1).setCellValue(don.getIdUser());
-                    row.createCell(2).setCellValue(don.getNbPoints());
-                    row.createCell(3).setCellValue(don.getDate_ajout().toString()); // Adapter la conversion de la date selon votre format
-                }
 
-                workbook.write(fos);
-                workbook.close();
-
-                showAlert(Alert.AlertType.INFORMATION, "Succès", "Les dons ont été exportés avec succès.");
-            } catch (IOException e) {
-                e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR, "Erreur", "Erreur lors de l'exportation des dons : " + e.getMessage());
+                    @Override
+                    protected void updateItem(Void item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty) {
+                            setGraphic(null);
+                        } else {
+                            setGraphic(btn);
+                        }
+                    }
+                };
+                return cell;
             }
+        };
+        colAjouterEtatStatut.setCellFactory(cellFactory);
+        donsTable.getColumns().add(colAjouterEtatStatut);
+        addSupprimerButtonToTable();
+        loadDons();
+
+
+    }
+
+
+    @FXML
+    private void handleAjouterEtatStatut(Dons don) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/AjouterEtatStatut.fxml"));
+            Parent root = loader.load();
+            AjouterEtatStatutController ajouterEtatStatutController = loader.getController();
+            ajouterEtatStatutController.setDon(don); // Pass the 'Dons' object to the AjouterEtatStatutController
+            ajouterEtatStatutController.initialize();
+            Stage stage = new Stage();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Ajouter Etat statut de dons");
+            stage.showAndWait(); // Wait until the window is closed
+            loadDons(); // Reload the donations after adding the state or status
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Erreur", "Impossible d'ouvrir la vue pour ajouter un état ou un statut au don.");
         }
     }
+
+
+
+    private void addSupprimerButtonToTable() {
+        TableColumn<Dons, Void> colSupprimer = new TableColumn<>("Supprimer");
+
+        // Créer une cellule de table personnalisée avec une icône de suppression
+        Callback<TableColumn<Dons, Void>, TableCell<Dons, Void>> cellFactory = new Callback<>() {
+            @Override
+            public TableCell<Dons, Void> call(final TableColumn<Dons, Void> param) {
+                final TableCell<Dons, Void> cell = new TableCell<>() {
+                    private final Button btn = new Button();
+
+                    {
+                        // Ajouter une icône de suppression au bouton
+                        Image image = new Image(getClass().getResourceAsStream("/img/deleteimg.png"));
+                        ImageView imageView = new ImageView(image);
+                        imageView.setFitWidth(16); // Ajustez la taille de l'icône si nécessaire
+                        imageView.setFitHeight(16);
+                        btn.setGraphic(imageView);
+
+                        // Définir l'action du bouton
+                        btn.setOnAction((event) -> {
+                            Dons don = getTableView().getItems().get(getIndex());
+                            supprimerDon(don);
+                        });
+                    }
+
+                    @Override
+                    protected void updateItem(Void item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty) {
+                            setGraphic(null);
+                        } else {
+                            setGraphic(btn);
+                        }
+                    }
+                };
+                return cell;
+            }
+        };
+
+        // Définir la cellule de la colonne Supprimer
+        colSupprimer.setCellFactory(cellFactory);
+
+        // Ajouter la colonne Supprimer à la TableView
+        donsTable.getColumns().add(colSupprimer);
+
+        searchField.setOnAction(event -> handleSearch());
+
+    }
+
+
 
     private void showAlert(Alert.AlertType alertType, String title, String message) {
         Alert alert = new Alert(alertType);
@@ -107,9 +234,49 @@ public class AfficherDonsController {
         alert.showAndWait();
     }
 
-
     private void loadDons() {
-        List<Dons> donsList = donsService.getAllDons();
+        donsTable.getItems().clear();
+        List<Dons> donsList = donsService.getAllDonsWithUserDetails();
         donsTable.getItems().addAll(donsList);
     }
+
+    private void supprimerDon(Dons don) {
+        boolean success = donsService.supprimerDons(don);
+        if (success) {
+            showAlert(Alert.AlertType.INFORMATION, "Suppression réussie", "Le don a été supprimé avec succès.");
+            loadDons();
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Erreur de suppression", "Impossible de supprimer le don.");
+        }
+    }
+
+    @FXML
+    private void handleGestionDemandesDons() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/GestionDemandesDons.fxml"));
+            Parent root = loader.load();
+            GestionDemandeDonsController gestionDemandeDonsController = loader.getController();
+            gestionDemandeDonsController.initialize();
+            Scene scene = rootPane.getScene();
+            scene.setRoot(root);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Erreur", "Impossible de charger la vue pour gérer les demandes de dons.");
+        }}
+    @FXML
+    private void handleSearch() {
+        String searchText = searchField.getText().trim().toLowerCase();
+
+        // Filter the list of donations based on the search text
+        List<Dons> filteredList = donsService.getAllDonsWithUserDetails().stream()
+                .filter(don -> don.getNomUser().toLowerCase().contains(searchText) ||
+                        don.getNumTel().toLowerCase().contains(searchText))
+                .collect(Collectors.toList());
+
+        // Clear the table and add the filtered list
+        donsTable.getItems().clear();
+        donsTable.getItems().addAll(filteredList);
+    }
+
+
 }
